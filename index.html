@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Плотно">
+<meta name="theme-color" content="#6a4cff">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
+<title>Плотный список</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&family=Unbounded:wght@600;700&display=swap">
+<style>
+/* Layout: шапка с крупным полем ввода и прогрессом дня; ниже две колонки — лента задач и боковая шпаргалка (на телефоне шпаргалка уходит вниз) */
+:root{
+  --bg:#f3f1fb; --surface:#ffffff; --fg:#191530; --muted:#5f5a7a; --faint:#9690b0;
+  --line:#e4e0f2; --hover:#f6f4ff; --accent:#6a4cff; --accent-2:#ff6b8b; --accent-ink:#ffffff;
+  --p1:#ef4b5f; --p2:#f59e0b; --p3:#4f8df7; --ok:#22b07d; --late:#e2445c;
+  --tag-l:93%; --tag-s:85%; --tag-fg-l:30%;
+  --shadow:0 12px 40px rgba(60,40,140,.16); --card:0 2px 0 rgba(60,40,140,.06);
+  --f-ui:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-head:"Unbounded","Manrope",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12101c; --surface:#1b1829; --fg:#efecff; --muted:#a9a3c6; --faint:#726c90;
+  --line:#2b2740; --hover:#232036; --accent:#9b87ff; --accent-2:#ff8aa3; --accent-ink:#120f1f;
+  --p1:#ff6b7c; --p2:#fbbf24; --p3:#7fb0ff; --ok:#4fd6a2; --late:#ff6b7c;
+  --tag-l:24%; --tag-s:40%; --tag-fg-l:82%;
+  --shadow:0 12px 40px rgba(0,0,0,.55); --card:0 2px 0 rgba(0,0,0,.3); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12101c; --surface:#1b1829; --fg:#efecff; --muted:#a9a3c6; --faint:#726c90;
+  --line:#2b2740; --hover:#232036; --accent:#9b87ff; --accent-2:#ff8aa3; --accent-ink:#120f1f;
+  --p1:#ff6b7c; --p2:#fbbf24; --p3:#7fb0ff; --ok:#4fd6a2; --late:#ff6b7c;
+  --tag-l:24%; --tag-s:40%; --tag-fg-l:82%;
+  --shadow:0 12px 40px rgba(0,0,0,.55); --card:0 2px 0 rgba(0,0,0,.3); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+header>*,.bar>*{min-width:0}
+body{background:var(--bg);color:var(--fg);font:16px/1.4 var(--f-ui);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+.wrap{max-width:1240px;margin:0 auto}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:20px 12px;display:grid;gap:12px}
+.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+h1{font:700 30px/1 var(--f-head);letter-spacing:-.02em;margin:0;display:flex;align-items:center;gap:10px}
+h1 .dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:inline-block}
+.stats{font:14px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums;display:flex;gap:14px;flex-wrap:wrap}
+.stats b{font-weight:500;color:var(--fg)} .stats .late b{color:var(--late)}
+.spacer{flex:1}
+.btn{border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 14px;font-size:15px;font-weight:600;display:inline-flex;align-items:center;gap:8px;transition:transform .12s,background .12s}
+.btn:hover{background:var(--hover)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;border-color:transparent;box-shadow:0 6px 18px rgba(106,76,255,.3)}
+.btn.danger{color:var(--late)}
+.progress{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:10px 14px;box-shadow:var(--card)}
+.progress .lbl{font-weight:700;font-size:15px}
+.progress .track{height:10px;border-radius:99px;background:var(--hover);overflow:hidden}
+.progress .fill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--ok),var(--accent));transition:width .4s ease}
+.progress .num{font:500 14px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.add{display:flex;gap:8px}
+.add input{flex:1;min-width:0;border:2px solid var(--line);background:var(--surface);border-radius:14px;padding:14px 16px;font-size:18px;font-weight:500;box-shadow:var(--card)}
+.add input:focus{border-color:var(--accent);outline:none}
+.add input::placeholder{color:var(--faint);font-weight:400}
+.add .btn{border-radius:14px;padding:0 20px;font-size:16px}
+.hint{font:13px var(--f-mono);color:var(--faint);overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+.hint code{color:var(--muted);background:var(--surface);border-radius:5px;padding:1px 5px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;scrollbar-width:none;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:3px;gap:2px}
+.seg button{border:0;background:none;padding:7px 14px;font-size:14px;font-weight:600;color:var(--muted);border-radius:9px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.chip,.tg{--h:250;background:hsl(var(--h) var(--tag-s) var(--tag-l));color:hsl(var(--h) 55% var(--tag-fg-l));font-weight:600}
+.chip{border:2px solid transparent;border-radius:99px;padding:5px 12px;font-size:14px}
+.chip[aria-pressed="true"]{border-color:hsl(var(--h) 60% 55%)}
+.chip small{opacity:.7;margin-left:4px;font-family:var(--f-mono)}
+.note{font-size:14px;color:var(--muted);background:var(--surface);border:1.5px dashed var(--line);border-radius:10px;padding:8px 12px}
+main{background:var(--surface);border:1.5px solid var(--line);border-radius:20px;overflow:hidden;margin-top:8px;box-shadow:var(--card)}
+.sec{display:flex;align-items:center;gap:10px;padding:14px 18px 6px;font:700 12px/1 var(--f-head);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);border-top:1.5px solid var(--line)}
+.sec:first-child{border-top:0}
+.sec.late{color:var(--late)} .sec.today{color:var(--accent)}
+.sec span{font:500 12px var(--f-mono);letter-spacing:0;background:var(--hover);border-radius:99px;padding:2px 8px}
+.row{display:grid;grid-template-columns:26px 5px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:48px;padding:0 18px;transition:background .12s}
+.row:hover{background:var(--hover)}
+.row .ck{width:24px;height:24px;border:2px solid var(--faint);border-radius:50%;background:none;padding:0;display:grid;place-items:center;transition:transform .15s,background .15s,border-color .15s}
+.row .ck:hover{border-color:var(--ok);transform:scale(1.08)}
+.row .ck svg{width:14px;height:14px;stroke:#fff;opacity:0}
+.row.done .ck{background:var(--ok);border-color:var(--ok)} .row.done .ck svg{opacity:1}
+.pr{width:5px;height:24px;border-radius:3px;background:transparent}
+.pr.p1{background:var(--p1)} .pr.p2{background:var(--p2)} .pr.p3{background:var(--p3)}
+.ttl{min-width:0;display:flex;align-items:center;gap:8px;cursor:text;padding-block:10px;flex-wrap:nowrap}
+.ttl .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.row.done .t{text-decoration:line-through;color:var(--faint)}
+.tg{font-size:13px;border-radius:99px;padding:2px 9px;white-space:nowrap}
+.due{font:500 14px var(--f-mono);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap;padding:3px 9px;border-radius:8px}
+.due.late{color:var(--late);background:color-mix(in srgb,var(--late) 12%,transparent)}
+.due.today{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.edit{grid-column:3 / 5;display:flex;gap:8px;padding-block:6px;flex-wrap:wrap}
+.edit input{flex:1;min-width:180px;border:2px solid var(--accent);border-radius:10px;padding:8px 10px;background:var(--bg);font-size:16px}
+.empty{padding:44px 20px;text-align:center;color:var(--muted);display:grid;gap:8px;justify-items:center}
+.empty b{color:var(--fg);font:700 18px var(--f-head)}
+.empty .big{font-size:44px;line-height:1;width:72px;height:72px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-family:var(--f-head)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);border-radius:12px;padding:10px 10px 10px 16px;display:flex;gap:14px;align-items:center;box-shadow:var(--shadow);font-size:15px;font-weight:600;z-index:20;max-width:calc(100% - 32px)}
+.toast button{border:0;background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:5px 10px;font-weight:700}
+.sheet{position:fixed;inset:0;z-index:30;background:rgba(18,12,40,.5);display:grid;place-items:end center;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.panel{background:var(--surface);border:1.5px solid var(--line);border-radius:20px;box-shadow:var(--shadow);width:min(760px,100%);max-height:calc(100% - 24px);display:flex;flex-direction:column;gap:12px;padding:20px;overflow:auto}
+.panel h2{font:700 20px var(--f-head);margin:0}
+.panel p{margin:0;color:var(--muted);font-size:15px}
+.panel textarea{width:100%;min-height:240px;resize:vertical;border:1.5px solid var(--line);border-radius:12px;background:var(--bg);padding:12px;font:13.5px/1.5 var(--f-mono)}
+.panel .ask{border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);width:100%}
+.panel .row2{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start;margin-top:8px}
+.cols>main{margin-top:0}
+.side{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-width:0}
+.side section{grid-template-columns:minmax(0,1fr)}
+.side section>*{min-width:0}
+.side section{background:var(--surface);border:1.5px solid var(--line);border-radius:20px;padding:16px;display:grid;gap:10px;box-shadow:var(--card)}
+.side h3{margin:0;font:700 13px/1 var(--f-head);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.side .sub{margin:0;font-size:13px;color:var(--faint)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.stag{display:inline-flex;align-items:center}
+.stag .chip{padding:4px 10px;font-size:13.5px}
+.stag .rm{border:0;background:none;color:var(--faint);font-size:16px;line-height:1;padding:2px 4px;border-radius:6px}
+.stag .rm:hover{color:var(--late);background:var(--hover)}
+.tagform{display:flex;gap:6px}
+.tagform input{flex:1;min-width:0;border:1.5px solid var(--line);border-radius:10px;padding:7px 10px;background:var(--bg);font-size:14px}
+.tagform .btn{padding:6px 12px;font-size:14px}
+.ins{display:grid;gap:4px}
+.ins button{display:flex;align-items:center;gap:10px;border:0;background:none;border-radius:10px;padding:6px 8px;text-align:left;font-size:14px}
+.ins button:hover{background:var(--hover)}
+.ins code{font:500 13.5px var(--f-mono);color:var(--fg);min-width:92px}
+.ins .h{color:var(--muted)}
+.ins .sw{width:10px;height:10px;border-radius:50%;flex:none}
+.ac{position:fixed;z-index:35;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:6px;display:grid;gap:2px;max-height:300px;overflow:auto;min-width:240px}
+.ac .ttlx{font:700 11px var(--f-head);text-transform:uppercase;letter-spacing:.08em;color:var(--faint);padding:6px 10px 4px}
+.ac button{display:flex;align-items:center;gap:10px;border:0;background:none;border-radius:9px;padding:8px 10px;text-align:left;font-size:15px}
+.ac button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.ac button[aria-selected="true"] .h{color:inherit;opacity:.85}
+.ac code{font:500 14px var(--f-mono)}
+.ac .h{margin-left:auto;font-size:13px;color:var(--muted);white-space:nowrap}
+.ac .sw{width:10px;height:10px;border-radius:50%;flex:none}
+@media (max-width:900px){.cols{grid-template-columns:minmax(0,1fr)}}
+.gwrap{position:relative;flex:1;min-width:0;display:flex}
+.gwrap input{flex:1}
+.ghost{position:absolute;inset:0;display:flex;align-items:center;padding:0 16px;border:2px solid transparent;font-size:18px;font-weight:500;white-space:pre;overflow:hidden;pointer-events:none;color:var(--faint)}
+.ghost .typed{color:transparent}
+.gbtn{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;border-radius:8px;background:var(--hover);color:var(--accent);font-size:13px;font-weight:700;padding:5px 9px}
+.days button{display:inline-flex;align-items:baseline;gap:4px}
+.days button small{font:500 12px var(--f-mono);opacity:.75}
+.days button i{font:600 11px var(--f-mono);font-style:normal;background:var(--accent-2);color:#fff;border-radius:99px;padding:0 6px;margin-left:2px}
+.days button.is-today{color:var(--accent)}
+.days button[aria-pressed="true"]{color:var(--accent-ink)}
+.search{flex:1;min-width:220px;display:flex}
+.search input{flex:1;min-width:0;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:8px 12px;font-size:15px}
+.search input:focus{border-color:var(--accent);outline:none}
+@media (max-width:560px){.ghost{font-size:16px;padding:0 14px}.search{min-width:0;flex-basis:100%}}
+.tabs{display:inline-flex;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:3px;gap:2px}
+.tabs button{border:0;background:none;padding:7px 14px;font-size:15px;font-weight:700;color:var(--muted);border-radius:9px}
+.tabs button[aria-pressed="true"]{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff}
+body.tab-tt .only-tasks{display:none!important}
+body:not(.tab-tt) #tt{display:none}
+#tt{display:grid;gap:14px;margin-top:4px}
+.ttbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.ttbar .wk{font-weight:700}
+.ttbar .wk b{color:var(--accent)}
+.ttbar label{display:flex;gap:6px;align-items:center;font-size:14px;color:var(--muted)}
+.ttgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:14px;align-items:start}
+.day{background:var(--surface);border:1.5px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:var(--card)}
+.day.is-today{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.day h3{margin:0;display:flex;align-items:baseline;gap:8px;padding:14px 16px 8px;font:700 15px var(--f-head)}
+.day h3 small{font:500 13px var(--f-mono);color:var(--muted)}
+.day h3 em{margin-left:auto;font:700 11px var(--f-head);font-style:normal;text-transform:uppercase;letter-spacing:.06em;color:#fff;background:var(--accent);border-radius:99px;padding:3px 8px}
+.pair{display:grid;grid-template-columns:78px minmax(0,1fr);gap:12px;padding:10px 16px;border-top:1.5px solid var(--line)}
+.pair .tm{font:500 14px/1.25 var(--f-mono);font-variant-numeric:tabular-nums}
+.pair .tm small{display:block;color:var(--faint);font-size:12px}
+.pair .tm .n{display:inline-block;font-size:11px;color:var(--muted);background:var(--hover);border-radius:6px;padding:0 5px;margin-bottom:3px}
+.pair .sj{font-weight:700;line-height:1.3}
+.pair .meta{font-size:13.5px;color:var(--muted);margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.pair .meta a{color:var(--accent);font-weight:600}
+.kind{font-size:12px;font-weight:700;border-radius:99px;padding:1px 8px;background:var(--hover);color:var(--muted)}
+.kind.k-lec{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+.kind.k-lab{background:color-mix(in srgb,var(--p3) 18%,transparent);color:var(--p3)}
+.kind.k-pr{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.pair.mil{opacity:.55}
+.pair.now{background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.pair .st{font-size:12px;font-weight:700;color:var(--ok)}
+.pair .st.next{color:var(--accent)}
+.day .none{padding:4px 16px 16px;color:var(--faint);font-size:14px}
+.ttfoot{font-size:13px;color:var(--faint)}
+.mini{display:grid;gap:6px}
+.mini div{display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px;font-size:13.5px;align-items:baseline}
+.mini code{font:500 13px var(--f-mono);color:var(--muted)}
+.mini .now{color:var(--ok);font-weight:700}
+.mini button{justify-self:start;border:0;background:none;color:var(--accent);font-weight:700;padding:0;font-size:13.5px}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:40;width:100%;height:100%}
+@media (max-width:560px){
+  h1{font-size:24px} .row{gap:9px;padding:0 12px} .sec{padding-inline:12px}
+  .hint{display:none} .add .btn{padding:0 14px} .seg button{padding:6px 9px;font-size:13px;white-space:nowrap} .add input{font-size:16px;padding:12px 14px} .ttl .tg:nth-of-type(n+2){display:none}
+}
+@media (prefers-reduced-motion:no-preference){
+  .toast{animation:up .2s ease-out}@keyframes up{from{opacity:0;translate:0 10px}}
+  .row.pop{animation:pop .35s ease-out}@keyframes pop{40%{background:color-mix(in srgb,var(--ok) 18%,transparent)}}
+}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+<header>
+  <div class="top">
+    <h1><span class="dot"></span>Плотный список</h1>
+    <nav class="tabs" id="tabs" aria-label="Разделы"><button type="button" data-tab="tasks" aria-pressed="true">Задачи</button><button type="button" data-tab="timetable" aria-pressed="false">Расписание</button></nav>
+    <div class="stats" id="stats"></div>
+    <div class="spacer"></div>
+    <button class="btn primary" id="exportBtn" type="button">✦ Экспорт для ИИ</button>
+  </div>
+  <div class="progress only-tasks" aria-label="Прогресс дня">
+    <span class="lbl" id="progLbl">Сегодня</span>
+    <div class="track"><div class="fill" id="progFill"></div></div>
+    <span class="num" id="progNum">0 / 0</span>
+  </div>
+  <form class="add only-tasks" id="addForm" autocomplete="off">
+    <div class="gwrap"><input id="addInput" type="text" enterkeyhint="done" placeholder="Что нужно сделать? #учёба !1 @пт" aria-label="Новая задача"><div class="ghost" id="ghost" aria-hidden="true"></div><button type="button" class="gbtn" id="gbtn" hidden>дополнить →</button></div>
+    <button class="btn primary" type="submit">Добавить</button>
+  </form>
+  <div class="hint only-tasks"><code>#тег</code> проект · <code>!1 !2 !3</code> приоритет · <code>@сегодня @завтра @пн…@вс @15.11 @+3</code> срок · нажми на задачу, чтобы изменить</div>
+  <div class="bar only-tasks">
+    <div class="seg" id="views" role="group" aria-label="Вид">
+      <button type="button" data-v="all" aria-pressed="true">Все</button>
+      <button type="button" data-v="today" aria-pressed="false">На сегодня</button>
+      <button type="button" data-v="nodate" aria-pressed="false">Без срока</button>
+      <button type="button" data-v="done" aria-pressed="false">Готово</button>
+    </div>
+    <div id="tags" class="bar"></div>
+  </div>
+  <div class="bar only-tasks">
+    <div class="seg days" id="days" role="group" aria-label="Дни недели"></div>
+    <label class="search"><input id="search" type="search" placeholder="Поиск: текст, #тег, !1, @пт" aria-label="Поиск задач" autocomplete="off"></label>
+  </div>
+  <div class="note" id="note" hidden></div>
+</header>
+<div class="cols only-tasks">
+<main id="list" aria-live="polite">
+  <div class="empty"><b>Загружаю задачи…</b><span>Если это первый запуск, напиши задачу в поле сверху и нажми Enter.</span></div>
+</main>
+<aside class="side" aria-label="Шпаргалка">
+  <section id="sideToday" hidden>
+    <h3>Пары сегодня</h3>
+    <div class="mini" id="sideTodayList"></div>
+  </section>
+  <section>
+    <h3>Теги</h3>
+    <p class="sub">Нажми на тег, чтобы вставить его в новую задачу.</p>
+    <div class="chips" id="sideTags"></div>
+    <form class="tagform" id="tagForm" autocomplete="off">
+      <input id="tagInput" type="text" placeholder="новый тег" aria-label="Новый тег">
+      <button class="btn" type="submit">Добавить</button>
+    </form>
+  </section>
+  <section>
+    <h3>Приоритет</h3>
+    <div class="ins" id="sidePrio"></div>
+  </section>
+  <section>
+    <h3>Срок</h3>
+    <div class="ins" id="sideDates"></div>
+  </section>
+  <section>
+    <h3>Резервная копия</h3>
+    <p class="sub">Задачи хранятся только в этом браузере. Сохрани копию, чтобы не потерять их или перенести на другое устройство.</p>
+    <div class="tagform"><button class="btn" type="button" id="bkSave">Сохранить в файл</button><label class="btn" for="bkFile" style="cursor:pointer">Загрузить</label><input type="file" id="bkFile" accept="application/json,.json" hidden></div>
+  </section>
+</aside>
+</div>
+<section id="tt" aria-label="Расписание"></section>
+</div>
+<div class="ac" id="ac" role="listbox" aria-label="Подсказки" hidden></div>
+
+<canvas id="confetti" aria-hidden="true"></canvas>
+<div class="toast" id="toast" hidden><span id="toastText"></span><button type="button" id="toastUndo">Отменить</button></div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="exTitle">
+    <div class="row2"><h2 id="exTitle">✦ Экспорт для ИИ</h2><div class="spacer"></div><button class="btn" type="button" id="exClose">Закрыть</button></div>
+    <p>Текст ниже — готовый запрос: скопируй и вставь в чат с Claude или другим ИИ.</p>
+    <div class="row2">
+      <label for="exMode" style="font-size:15px;color:var(--muted)">Что попросить</label>
+      <select id="exMode" class="btn">
+        <option value="day">План на сегодня</option>
+        <option value="prio">Расставить приоритеты</option>
+        <option value="steps">Разбить большие задачи на шаги</option>
+        <option value="week">План на неделю</option>
+        <option value="own">Свой вопрос</option>
+      </select>
+      <label style="font-size:15px;color:var(--muted);display:flex;gap:6px;align-items:center"><input type="checkbox" id="exScope"> только текущий фильтр</label>
+    </div>
+    <input class="ask" id="exOwn" type="text" placeholder="Например: что из этого можно сделать за 2 часа вечером?" hidden>
+    <textarea id="exText" readonly aria-label="Текст запроса"></textarea>
+    <div class="row2"><button class="btn primary" type="button" id="exCopy">Скопировать</button><span id="exMsg" style="font-size:15px;color:var(--muted)"></span></div>
+  </div>
+</div>
+
+<script>
+(function(){
+/* ===== НАСТРОЙКИ =====
+   Теги, которые всегда есть в шпаргалке и подсказках, даже если задач с ними пока нет.
+   Пиши в нижнем регистре, без «#», в кавычках через запятую. Остальные теги можно добавлять прямо на сайте. */
+const DEFAULT_TAGS=['учёба','дом','курсач'];
+const PRIO=[{v:1,name:'срочно'},{v:2,name:'важно'},{v:3,name:'можно потом'}];
+/* ===================== */
+/* Расписание группы, встроенное в сайт (обе подгруппы, чётная и нечётная недели) */
+const EMBED_SCHED={"group": "ФЭ24-08Б", "title": "Осенний семестр 2026–2027", "source": "файл расписания ФЭ 3 курс, осень 2026/27", "weekAnchor": "2026-08-31", "slots": [{"day": 1, "start": "10:15", "end": "11:50", "week": 1, "sub": 1, "subject": "Информационные устройства и системы в робототехнике", "teacher": "Голых Ю.Г.", "type": "лекция", "place": "корп. 15, ауд. 3-12, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "10:15", "end": "11:50", "week": 1, "sub": 2, "subject": "Информационные устройства и системы в робототехнике", "teacher": "Голых Ю.Г.", "type": "лекция", "place": "корп. 15, ауд. 3-12, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "10:15", "end": "11:50", "week": 2, "sub": 1, "subject": "Математические основы кибернетики", "teacher": "Масальский Г.Б.", "type": "лекция", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "10:15", "end": "11:50", "week": 2, "sub": 2, "subject": "Математические основы кибернетики", "teacher": "Масальский Г.Б.", "type": "лекция", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "12:00", "end": "13:35", "week": 1, "sub": 1, "subject": "Электронные устройства мехатронных и робототехнических систем", "teacher": "Голых Ю.Г.", "type": "лекция", "place": "корп. 15, ауд. 3-12, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "12:00", "end": "13:35", "week": 1, "sub": 2, "subject": "Электронные устройства мехатронных и робототехнических систем", "teacher": "Голых Ю.Г.", "type": "лекция", "place": "корп. 15, ауд. 3-12, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "12:00", "end": "13:35", "week": 2, "sub": 1, "subject": "Программное обеспечение мехатронных и робототехнических систем", "teacher": "Голых Ю.Г.", "type": "лекция", "place": "корп. 15, ауд. 3-12, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "12:00", "end": "13:35", "week": 2, "sub": 2, "subject": "Программное обеспечение мехатронных и робототехнических систем", "teacher": "Голых Ю.Г.", "type": "лекция", "place": "корп. 15, ауд. 3-12, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "14:10", "end": "15:45", "week": 1, "sub": 1, "subject": "Технологии роботизированного производства", "teacher": "Соловьюк В.М.", "type": "лаба", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "14:10", "end": "15:45", "week": 1, "sub": 2, "subject": "Информационные устройства и системы в робототехнике", "teacher": "Голых Ю.Г.", "type": "лаба", "place": "корп. 15, ауд. 3-12, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "14:10", "end": "15:45", "week": 2, "sub": 1, "subject": "Технологии роботизированного производства", "teacher": "Соловьюк В.М.", "type": "лаба", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "14:10", "end": "15:45", "week": 2, "sub": 2, "subject": "Информационные устройства и системы в робототехнике", "teacher": "Голых Ю.Г.", "type": "лаба", "place": "корп. 15, ауд. 3-12, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "15:55", "end": "17:30", "week": 1, "sub": 1, "subject": "Информационные устройства и системы в робототехнике", "teacher": "Голых Ю.Г.", "type": "лаба", "place": "корп. 15, ауд. 3-12, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "15:55", "end": "17:30", "week": 1, "sub": 2, "subject": "Технологии роботизированного производства", "teacher": "Соловьюк В.М.", "type": "лаба", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "15:55", "end": "17:30", "week": 2, "sub": 1, "subject": "Информационные устройства и системы в робототехнике", "teacher": "Голых Ю.Г.", "type": "лаба", "place": "корп. 15, ауд. 3-12, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 1, "start": "15:55", "end": "17:30", "week": 2, "sub": 2, "subject": "Технологии роботизированного производства", "teacher": "Соловьюк В.М.", "type": "лаба", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 2, "start": "12:00", "end": "13:35", "week": 1, "sub": 1, "subject": "Проектирование мехатронных и робототехнических систем", "teacher": "Соловьюк В.М.", "type": "лаба", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 2, "start": "12:00", "end": "13:35", "week": 2, "sub": 1, "subject": "Проектирование мехатронных и робототехнических систем", "teacher": "Соловьюк В.М.", "type": "лаба", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 2, "start": "14:10", "end": "15:45", "week": 1, "sub": 1, "subject": "Электронные устройства мехатронных и робототехнических систем", "teacher": "Голых Ю.Г.", "type": "лаба", "place": "корп. 15, ауд. 3-10, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 2, "start": "14:10", "end": "15:45", "week": 1, "sub": 2, "subject": "Проектирование мехатронных и робототехнических систем", "teacher": "Соловьюк В.М.", "type": "лаба", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 2, "start": "14:10", "end": "15:45", "week": 2, "sub": 1, "subject": "Электронные устройства мехатронных и робототехнических систем", "teacher": "Голых Ю.Г.", "type": "лаба", "place": "корп. 15, ауд. 3-10, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 2, "start": "14:10", "end": "15:45", "week": 2, "sub": 2, "subject": "Проектирование мехатронных и робототехнических систем", "teacher": "Соловьюк В.М.", "type": "лаба", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 2, "start": "15:55", "end": "17:30", "week": 1, "sub": 1, "subject": "Математические основы кибернетики", "teacher": "Масальский Г.Б.", "type": "лаба", "place": "корп. 12, ауд. 2-10", "link": "", "mode": "синхронно", "military": false}, {"day": 2, "start": "15:55", "end": "17:30", "week": 1, "sub": 2, "subject": "Электронные устройства мехатронных и робототехнических систем", "teacher": "Голых Ю.Г.", "type": "лаба", "place": "корп. 15, ауд. 3-10, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 2, "start": "15:55", "end": "17:30", "week": 2, "sub": 1, "subject": "Математические основы кибернетики", "teacher": "Масальский Г.Б.", "type": "лаба", "place": "корп. 12, ауд. 2-10", "link": "", "mode": "синхронно", "military": false}, {"day": 2, "start": "15:55", "end": "17:30", "week": 2, "sub": 2, "subject": "Электронные устройства мехатронных и робототехнических систем", "teacher": "Голых Ю.Г.", "type": "лаба", "place": "корп. 15, ауд. 3-10, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 2, "start": "17:40", "end": "19:15", "week": 1, "sub": 2, "subject": "Математические основы кибернетики", "teacher": "Масальский Г.Б.", "type": "лаба", "place": "корп. 12, ауд. 2-10", "link": "", "mode": "синхронно", "military": false}, {"day": 2, "start": "17:40", "end": "19:15", "week": 2, "sub": 2, "subject": "Математические основы кибернетики", "teacher": "Масальский Г.Б.", "type": "лаба", "place": "корп. 12, ауд. 2-10", "link": "", "mode": "синхронно", "military": false}, {"day": 3, "start": "10:15", "end": "11:50", "week": 1, "sub": 1, "subject": "Проектирование мехатронных и робототехнических систем", "teacher": "Соловьюк В.М.", "type": "лекция", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 3, "start": "10:15", "end": "11:50", "week": 1, "sub": 2, "subject": "Проектирование мехатронных и робототехнических систем", "teacher": "Соловьюк В.М.", "type": "лекция", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 3, "start": "12:00", "end": "13:35", "week": 1, "sub": 1, "subject": "Технологии роботизированного производства", "teacher": "Соловьюк В.М.", "type": "лекция", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 3, "start": "12:00", "end": "13:35", "week": 1, "sub": 2, "subject": "Технологии роботизированного производства", "teacher": "Соловьюк В.М.", "type": "лекция", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 3, "start": "14:10", "end": "15:45", "week": 1, "sub": 1, "subject": "Безопасность жизнедеятельности", "teacher": "Марченкова С.Г.", "type": "лаба", "place": "корп. 80, ауд. 4-08", "link": "", "mode": "синхронно", "military": false}, {"day": 3, "start": "14:10", "end": "15:45", "week": 1, "sub": 2, "subject": "Безопасность жизнедеятельности", "teacher": "Марченкова С.Г.", "type": "лаба", "place": "корп. 80, ауд. 4-08", "link": "", "mode": "синхронно", "military": false}, {"day": 3, "start": "15:55", "end": "17:30", "week": 1, "sub": 1, "subject": "Безопасность жизнедеятельности", "teacher": "Марченкова С.Г.", "type": "практика", "place": "Онлайн, ЭИОС", "link": "https://e.sfu-kras.ru/course/view.php?id=16627", "mode": "асинхронно", "military": false}, {"day": 3, "start": "15:55", "end": "17:30", "week": 1, "sub": 2, "subject": "Безопасность жизнедеятельности", "teacher": "Марченкова С.Г.", "type": "практика", "place": "Онлайн, ЭИОС", "link": "https://e.sfu-kras.ru/course/view.php?id=16627", "mode": "асинхронно", "military": false}, {"day": 4, "start": "08:30", "end": "10:05", "week": 1, "sub": 1, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "08:30", "end": "10:05", "week": 1, "sub": 2, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "08:30", "end": "10:05", "week": 2, "sub": 1, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "08:30", "end": "10:05", "week": 2, "sub": 2, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "10:15", "end": "11:50", "week": 1, "sub": 1, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "10:15", "end": "11:50", "week": 1, "sub": 2, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "10:15", "end": "11:50", "week": 2, "sub": 1, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "10:15", "end": "11:50", "week": 2, "sub": 2, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "12:00", "end": "13:35", "week": 1, "sub": 1, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "12:00", "end": "13:35", "week": 1, "sub": 2, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "12:00", "end": "13:35", "week": 2, "sub": 1, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "12:00", "end": "13:35", "week": 2, "sub": 2, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "14:10", "end": "15:45", "week": 1, "sub": 1, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "14:10", "end": "15:45", "week": 1, "sub": 2, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "14:10", "end": "15:45", "week": 2, "sub": 1, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "14:10", "end": "15:45", "week": 2, "sub": 2, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "15:55", "end": "17:30", "week": 1, "sub": 1, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "15:55", "end": "17:30", "week": 1, "sub": 2, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "15:55", "end": "17:30", "week": 2, "sub": 1, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "15:55", "end": "17:30", "week": 2, "sub": 2, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "17:40", "end": "19:15", "week": 1, "sub": 1, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "17:40", "end": "19:15", "week": 1, "sub": 2, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "17:40", "end": "19:15", "week": 2, "sub": 1, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 4, "start": "17:40", "end": "19:15", "week": 2, "sub": 2, "subject": "Военная подготовка", "teacher": "", "type": "", "place": "", "link": "", "mode": "синхронно", "military": true}, {"day": 5, "start": "14:10", "end": "15:45", "week": 1, "sub": 1, "subject": "Теория автоматизированного управления", "teacher": "Смольников А.П.", "type": "лаба", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 5, "start": "14:10", "end": "15:45", "week": 1, "sub": 2, "subject": "Программное обеспечение мехатронных и робототехнических систем", "teacher": "Голых Ю.Г.", "type": "лаба", "place": "корп. 15, ауд. 3-12, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 5, "start": "14:10", "end": "15:45", "week": 2, "sub": 1, "subject": "Программное обеспечение мехатронных и робототехнических систем", "teacher": "Голых Ю.Г.", "type": "лаба", "place": "корп. 15, ауд. 3-12, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 5, "start": "14:10", "end": "15:45", "week": 2, "sub": 2, "subject": "Теория автоматизированного управления", "teacher": "Смольников А.П.", "type": "лаба", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 5, "start": "15:55", "end": "17:30", "week": 1, "sub": 1, "subject": "Приводы роботов", "teacher": "Смольников А.П.", "type": "лаба", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 5, "start": "15:55", "end": "17:30", "week": 1, "sub": 2, "subject": "Программное обеспечение мехатронных и робототехнических систем", "teacher": "Голых Ю.Г.", "type": "лаба", "place": "корп. 15, ауд. 3-12, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 5, "start": "15:55", "end": "17:30", "week": 2, "sub": 1, "subject": "Программное обеспечение мехатронных и робототехнических систем", "teacher": "Голых Ю.Г.", "type": "лаба", "place": "корп. 15, ауд. 3-12, Г42-06", "link": "", "mode": "синхронно", "military": false}, {"day": 5, "start": "15:55", "end": "17:30", "week": 2, "sub": 2, "subject": "Приводы роботов", "teacher": "Смольников А.П.", "type": "лаба", "place": "корп. 12, ауд. 2-02", "link": "", "mode": "синхронно", "military": false}, {"day": 6, "start": "08:30", "end": "10:05", "week": 1, "sub": 2, "subject": "Теория автоматизированного управления", "teacher": "Смольников А.П.", "type": "лаба", "place": "Онлайн, ЭИОС", "link": "https://e.sfu-kras.ru/course/view.php?id=28352", "mode": "асинхронно", "military": false}, {"day": 6, "start": "08:30", "end": "10:05", "week": 2, "sub": 1, "subject": "Теория автоматизированного управления", "teacher": "Смольников А.П.", "type": "лаба", "place": "Онлайн, ЭИОС", "link": "https://e.sfu-kras.ru/course/view.php?id=28352", "mode": "асинхронно", "military": false}, {"day": 6, "start": "10:15", "end": "11:50", "week": 1, "sub": 1, "subject": "Теория автоматизированного управления", "teacher": "Смольников А.П.", "type": "лекция", "place": "Онлайн, ЭИОС", "link": "https://e.sfu-kras.ru/course/view.php?id=28352", "mode": "синхронно", "military": false}, {"day": 6, "start": "10:15", "end": "11:50", "week": 1, "sub": 2, "subject": "Теория автоматизированного управления", "teacher": "Смольников А.П.", "type": "лекция", "place": "Онлайн, ЭИОС", "link": "https://e.sfu-kras.ru/course/view.php?id=28352", "mode": "синхронно", "military": false}, {"day": 6, "start": "10:15", "end": "11:50", "week": 2, "sub": 1, "subject": "Приводы роботов", "teacher": "Смольников А.П.", "type": "лекция", "place": "Онлайн, ЭИОС", "link": "https://e.sfu-kras.ru/course/view.php?id=28353", "mode": "синхронно", "military": false}, {"day": 6, "start": "10:15", "end": "11:50", "week": 2, "sub": 2, "subject": "Приводы роботов", "teacher": "Смольников А.П.", "type": "лекция", "place": "Онлайн, ЭИОС", "link": "https://e.sfu-kras.ru/course/view.php?id=28353", "mode": "синхронно", "military": false}, {"day": 6, "start": "12:00", "end": "13:35", "week": 1, "sub": 1, "subject": "Безопасность жизнедеятельности", "teacher": "Марченкова С.Г.", "type": "лекция", "place": "Онлайн, ЭИОС", "link": "https://e.sfu-kras.ru/course/view.php?id=16627", "mode": "синхронно", "military": false}, {"day": 6, "start": "12:00", "end": "13:35", "week": 1, "sub": 2, "subject": "Безопасность жизнедеятельности", "teacher": "Марченкова С.Г.", "type": "лекция", "place": "Онлайн, ЭИОС", "link": "https://e.sfu-kras.ru/course/view.php?id=16627", "mode": "синхронно", "military": false}, {"day": 6, "start": "12:00", "end": "13:35", "week": 2, "sub": 1, "subject": "Безопасность жизнедеятельности", "teacher": "Марченкова С.Г.", "type": "лекция", "place": "Онлайн, ЭИОС", "link": "https://e.sfu-kras.ru/course/view.php?id=16627", "mode": "синхронно", "military": false}, {"day": 6, "start": "12:00", "end": "13:35", "week": 2, "sub": 2, "subject": "Безопасность жизнедеятельности", "teacher": "Марченкова С.Г.", "type": "лекция", "place": "Онлайн, ЭИОС", "link": "https://e.sfu-kras.ru/course/view.php?id=16627", "mode": "синхронно", "military": false}]};
+const $=id=>document.getElementById(id);
+const WD=['вс','пн','вт','ср','чт','пт','сб'];
+const WDF=['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
+let tasks=[]; let view='all'; let tagFilter=null; let editing=null; let popId=null;
+let store=null;
+let lastUndo=null, toastTimer=null, clearArmed=false;
+let presets=DEFAULT_TAGS.slice(); let colors={}, hueMap={}; let writeSettings=null;
+let search='', sq=null;
+let sched=null, tab=(location.hash==='#timetable')?'timetable':'tasks', ttShift=0, ttPrefs={sub:1,hideMil:false};
+try{const o=JSON.parse(localStorage.getItem('plotno.tt.v1')||'null');if(o)ttPrefs={...ttPrefs,...o}}catch(e){}
+let saveAnchor=null;
+async function saveSettings(){if(writeSettings)await writeSettings({tags:presets,colors})}
+const saveTags=async a=>{presets=a;ensureHueMap();colors={...hueMap};render();await saveSettings()};
+
+/* ---------- даты ---------- */
+const today0=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const fromIso=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const diff=s=>Math.round((fromIso(s)-today0())/864e5);
+const ddmm=s=>{const d=fromIso(s);return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')};
+function dueLabel(s){const n=diff(s);
+  if(n===0)return'сегодня'; if(n===1)return'завтра'; if(n===-1)return'вчера';
+  if(n<0)return ddmm(s)+' · −'+(-n)+' дн.'; if(n<7)return WD[fromIso(s).getDay()]+' '+ddmm(s); return ddmm(s);}
+function parseDate(tok){
+  const t=tok.toLowerCase(), d=today0();
+  if(t==='сегодня'||t==='today'||t==='сег')return iso(d);
+  if(t==='завтра'||t==='tomorrow'||t==='зав'){d.setDate(d.getDate()+1);return iso(d)}
+  if(t==='послезавтра'){d.setDate(d.getDate()+2);return iso(d)}
+  let m=t.match(/^\+(\d{1,3})$/); if(m){d.setDate(d.getDate()+Number(m[1]));return iso(d)}
+  const w=WD.indexOf(t); if(w>=0){let k=(w-d.getDay()+7)%7; if(k===0)k=7; d.setDate(d.getDate()+k);return iso(d)}
+  m=t.match(/^(\d{1,2})[.\/](\d{1,2})(?:[.\/](\d{2,4}))?$/);
+  if(m){let y=m[3]?Number(m[3]):d.getFullYear(); if(y<100)y+=2000;
+    const r=new Date(y,Number(m[2])-1,Number(m[1]));
+    if(r.getMonth()!==Number(m[2])-1)return null;
+    if(!m[3]&&r<d&&diff(iso(r))<-60)r.setFullYear(y+1);
+    return iso(r)}
+  return null;
+}
+/* ---------- разбор строки ---------- */
+function parse(text){
+  let title=text, tags=[], priority=0, due=null;
+  title=title.replace(/(^|\s)#([\p{L}\p{N}_\-]+)/gu,(s,a,t)=>{t=t.toLowerCase(); if(!tags.includes(t))tags.push(t); return a});
+  title=title.replace(/(^|\s)!([1-3])(?=\s|$)/g,(s,a,p)=>{priority=Number(p);return a});
+  title=title.replace(/(^|\s)@(\S+)/g,(s,a,t)=>{const r=parseDate(t); if(r){due=r;return a} return s});
+  title=title.replace(/\s+/g,' ').trim();
+  return {title,tags,priority,due};
+}
+function serialize(t){
+  return [t.title, ...(t.tags||[]).map(x=>'#'+x), t.priority?'!'+t.priority:'', t.due?'@'+ddmm(t.due)+'.'+t.due.slice(0,4):''].filter(Boolean).join(' ');
+}
+/* Цвета тегов: каждый новый тег получает следующий оттенок по «золотому углу» (137.5°),
+   поэтому соседние теги всегда заметно отличаются. Назначенные цвета сохраняются. */
+const GOLD=137.508;
+const hashHue=s=>{let h=0;for(const c of s)h=(h*31+c.codePointAt(0))%360;return h};
+function ensureHueMap(extra){
+  hueMap={...colors}; let n=Object.keys(hueMap).length;
+  const order=[...presets,...tasks.slice().sort((a,b)=>(a.created||0)-(b.created||0)).flatMap(t=>t.tags||[]),...(extra||[])];
+  for(const g of order){if(hueMap[g]==null){hueMap[g]=Math.round((n*GOLD+20)%360);n++}}
+}
+const hue=s=>hueMap[s]!=null?hueMap[s]:hashHue(s);
+async function persistColors(extra){
+  ensureHueMap(extra);
+  if(!Object.keys(hueMap).some(k=>colors[k]==null))return;
+  colors={...hueMap}; await saveSettings();
+}
+
+/* ---------- хранилище ---------- */
+function useLocal(reason){
+  const KEY='plotno.tasks.v1';
+  const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}};
+  const write=a=>{try{localStorage.setItem(KEY,JSON.stringify(a))}catch(e){}};
+  tasks=read();
+  sched=EMBED_SCHED; try{const a=localStorage.getItem('plotno.anchor.v1'); if(a)sched={...sched,weekAnchor:a}}catch(e){}
+  saveAnchor=async a=>{try{localStorage.setItem('plotno.anchor.v1',a)}catch(e){}};
+  try{const o=JSON.parse(localStorage.getItem('plotno.settings.v1')||'null');if(o){if(Array.isArray(o.tags))presets=o.tags;if(o.colors)colors=o.colors}}catch(e){}
+  writeSettings=async o=>{try{localStorage.setItem('plotno.settings.v1',JSON.stringify(o))}catch(e){}};
+  store={
+    add:async t=>{tasks.push(t);write(tasks);render()},
+    update:async(id,p)=>{tasks=tasks.map(x=>x.id===id?{...x,...p}:x);write(tasks);render()},
+    remove:async id=>{tasks=tasks.filter(x=>x.id!==id);write(tasks);render()},
+  };
+  showNote(reason); render();
+}
+function showNote(t){const n=$('note'); if(t){n.textContent=t;n.hidden=false}else n.hidden=true}
+async function init(){
+  render();
+  let db=null;
+  try{db=window.claude&&window.claude.use?await window.claude.use('db'):null}catch(e){db=null}
+  if(!db){useLocal('');return}
+  const col=db.collection('tasks');
+  let loaded=false;
+  const timer=setTimeout(()=>{if(!loaded)showNote('Хранилище пока не отвечает. Проверь интернет — список обновится сам.')},10000);
+  col.onSnapshot(snap=>{
+    tasks=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!snap.metadata.fromCache){loaded=true;clearTimeout(timer);showNote('')}
+    render();
+  },err=>{clearTimeout(timer);showNote('Не удалось загрузить задачи ('+err.code+'). Обнови страницу позже.')});
+  const sdoc=db.doc('schedule/fe24-08b');
+  sdoc.onSnapshot(snap=>{sched=snap.exists?snap.data():null;render()},()=>{});
+  saveAnchor=a=>sdoc.update({weekAnchor:a});
+  const settings=db.doc('meta/settings');
+  settings.onSnapshot(snap=>{const d=snap.exists?snap.data():null;presets=d&&Array.isArray(d.tags)?d.tags.slice():DEFAULT_TAGS.slice();colors=d&&d.colors&&typeof d.colors==='object'?{...d.colors}:{};render()},()=>{});
+  writeSettings=o=>settings.set(o);
+  store={
+    add:async t=>{const {id,...body}=t; await col.doc(id).set(body)},
+    update:async(id,p)=>{await col.doc(id).update(p)},
+    remove:async id=>{await col.doc(id).delete()},
+  };
+}
+async function safe(fn){try{await fn()}catch(e){showNote('Не получилось сохранить изменение: '+(e&&e.code||'ошибка')+'. Попробуй ещё раз.')}}
+const newId=()=>'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+/* ---------- отбор и сортировка ---------- */
+const sortKey=t=>[t.due?diff(t.due):9999, -(t.priority?4-t.priority:0), t.created||0];
+function cmp(a,b){const x=sortKey(a),y=sortKey(b);for(let i=0;i<x.length;i++){if(x[i]!==y[i])return x[i]-y[i]}return 0}
+function visible(){
+  let a=tasks.slice();
+  if(tagFilter)a=a.filter(t=>(t.tags||[]).includes(tagFilter));
+  if(sq)a=a.filter(matchSearch);
+  if(view==='done')return a.filter(t=>t.done).sort((p,q)=>(q.doneAt||0)-(p.doneAt||0));
+  a=a.filter(t=>!t.done);
+  if(view==='today')a=a.filter(t=>t.due&&diff(t.due)<=0);
+  if(view==='nodate')a=a.filter(t=>!t.due);
+  if(view.startsWith('d:'))a=a.filter(t=>t.due===view.slice(2));
+  return a.sort(cmp);
+}
+function groupOf(t){if(!t.due)return'Без срока';const n=diff(t.due);if(n<0)return'Просрочено';if(n===0)return'Сегодня';if(n<=7)return'Ближайшие 7 дней';return'Позже'}
+const ORDER=['Просрочено','Сегодня','Ближайшие 7 дней','Позже','Без срока'];
+
+/* ---------- отрисовка ---------- */
+const CHECK='<svg viewBox="0 0 12 12" fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M2.5 6.5l2.3 2.2 4.7-5"/></svg>';
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+const tagHtml=g=>`<span class="tg" style="--h:${hue(g)}">#${esc(g)}</span>`;
+function rowHtml(t){
+  if(editing===t.id) return `<div class="row" data-id="${t.id}"><button class="ck" type="button" data-act="toggle" aria-label="Отметить">${CHECK}</button><span class="pr p${t.priority||0}"></span>
+    <form class="edit" data-act="save"><input id="ed-${t.id}" value="${esc(serialize(t))}" aria-label="Изменить задачу"><button class="btn" type="submit">ОК</button><button class="btn danger" type="button" data-act="del">Удалить</button></form></div>`;
+  const dl=t.due?diff(t.due):null;
+  const dc=t.due?(dl<0?'late':dl===0?'today':''):'';
+  return `<div class="row${t.done?' done':''}${popId===t.id?' pop':''}" data-id="${t.id}">
+    <button class="ck" type="button" data-act="toggle" aria-label="${t.done?'Вернуть в работу':'Отметить выполненной'}">${CHECK}</button>
+    <span class="pr p${t.priority||0}" title="${t.priority?'Приоритет '+t.priority:''}"></span>
+    <div class="ttl" data-act="edit"><span class="t">${esc(t.title||'Без названия')}</span>${(t.tags||[]).map(tagHtml).join('')}</div>
+    <span class="due ${dc}">${t.due?esc(dueLabel(t.due)):''}</span></div>`;
+}
+function allTags(){
+  const c={}; presets.forEach(g=>c[g]=c[g]||0);
+  tasks.filter(t=>!t.done).forEach(t=>(t.tags||[]).forEach(g=>c[g]=(c[g]||0)+1));
+  return Object.keys(c).map(name=>({name,count:c[name],preset:presets.includes(name)})).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,'ru'));
+}
+const DATE_OPTS=[['сегодня'],['завтра'],['послезавтра'],['пн'],['вт'],['ср'],['чт'],['пт'],['сб'],['вс'],['+7','через неделю']];
+function dateHint(tok){const r=parseDate(tok);if(!r)return'';const n=diff(r);return WD[fromIso(r).getDay()]+' '+ddmm(r)+(n>1?' · через '+n+' дн.':'')}
+function renderSide(){
+  $('sideTags').innerHTML=allTags().map(t=>`<span class="stag"><button type="button" class="chip" style="--h:${hue(t.name)}" data-ins="#${esc(t.name)}">#${esc(t.name)}<small>${t.count}</small></button>${t.preset?`<button type="button" class="rm" data-rm="${esc(t.name)}" aria-label="Убрать тег ${esc(t.name)} из шпаргалки" title="Убрать из шпаргалки">×</button>`:''}</span>`).join('')||'<span class="sub">Тегов пока нет — добавь первый ниже.</span>';
+  $('sidePrio').innerHTML=PRIO.map(p=>`<button type="button" data-ins="!${p.v}"><span class="sw" style="background:var(--p${p.v})"></span><code>!${p.v}</code><span class="h">${p.name}</span></button>`).join('');
+  $('sideDates').innerHTML=DATE_OPTS.filter(o=>['сегодня','завтра','пт','вс','+7'].includes(o[0])).map(o=>`<button type="button" data-ins="@${o[0]}"><code>@${o[0]}</code><span class="h">${dateHint(o[0])}</span></button>`).join('')
+    +`<button type="button" data-ins="@"><code>@15.12</code><span class="h">любая дата дд.мм</span></button>`;
+}
+function render(){
+  ensureHueMap();
+  renderTabs();
+  renderSide();
+  renderSideToday();
+  renderTT();
+  const open=tasks.filter(t=>!t.done);
+  const td=open.filter(t=>t.due&&diff(t.due)===0).length, late=open.filter(t=>t.due&&diff(t.due)<0).length;
+  $('stats').innerHTML=`<span>открыто <b>${open.length}</b></span><span>сегодня <b>${td}</b></span><span class="late">просрочено <b>${late}</b></span>`;
+  // прогресс дня: сделано сегодня против (сделано сегодня + открытые на сегодня и просроченные)
+  const t0=today0().getTime();
+  const doneToday=tasks.filter(t=>t.done&&t.doneAt&&t.doneAt>=t0).length;
+  const total=doneToday+td+late;
+  $('progFill').style.width=(total?Math.round(doneToday/total*100):0)+'%';
+  $('progNum').textContent=doneToday+' / '+total;
+  $('progLbl').textContent=total&&doneToday===total?'День закрыт 🎉':doneToday?'Сегодня сделано':'Сегодня';
+  // теги
+  const counts={}; open.forEach(t=>(t.tags||[]).forEach(g=>counts[g]=(counts[g]||0)+1));
+  if(tagFilter&&!tasks.some(t=>(t.tags||[]).includes(tagFilter)))tagFilter=null;
+  $('tags').innerHTML=Object.keys(counts).sort().map(g=>`<button type="button" class="chip" style="--h:${hue(g)}" data-tag="${esc(g)}" aria-pressed="${tagFilter===g}">#${esc(g)}<small>${counts[g]}</small></button>`).join('');
+  document.querySelectorAll('#views button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===view));
+  { const d0=today0(); let dh='';
+    for(let i=0;i<7;i++){const d=new Date(d0);d.setDate(d0.getDate()+i);const ds=iso(d);const c=open.filter(t=>t.due===ds).length;
+      dh+=`<button type="button" class="${i===0?'is-today':''}" data-v="d:${ds}" aria-pressed="${view==='d:'+ds}" title="${WDF[d.getDay()]}, ${ddmm(ds)}">${WD[d.getDay()]}<small>${d.getDate()}</small>${c?`<i>${c}</i>`:''}</button>`}
+    $('days').innerHTML=dh; }
+  const list=visible(); const L=$('list');
+  if(!list.length){
+    const msg=tasks.length===0?'<div class="big">+</div><b>Пока нет ни одной задачи</b><span>Напиши первую в поле сверху, например: <code>Сдать ПЗ 6 #учёба !1 @пт</code></span>'
+      :view==='done'?'<div class="big">✓</div><b>Выполненных задач нет</b><span>Отмеченные задачи появятся здесь.</span>'
+      :view==='today'?'<div class="big">✓</div><b>На сегодня всё чисто</b><span>Ни одной задачи на сегодня и ничего не просрочено.</span>'
+      :sq?'<div class="big">?</div><b>Ничего не нашлось</b><span>По запросу «'+esc(search)+'» задач нет.</span>'
+      :view.startsWith('d:')?'<div class="big">✓</div><b>На этот день задач нет</b><span>Напиши задачу с датой, например <code>@'+WD[fromIso(view.slice(2)).getDay()]+'</code>.</span>'
+      :'<div class="big">·</div><b>Здесь пусто</b><span>Под этот фильтр задач нет.</span>';
+    L.innerHTML=`<div class="empty">${msg}</div>`; return;
+  }
+  let html='';
+  if(view==='all'){
+    const g={}; list.forEach(t=>(g[groupOf(t)]=g[groupOf(t)]||[]).push(t));
+    ORDER.forEach(k=>{if(g[k])html+=`<div class="sec${k==='Просрочено'?' late':k==='Сегодня'?' today':''}">${k}<span>${g[k].length}</span></div>`+g[k].map(rowHtml).join('')});
+  } else {
+    if(view.startsWith('d:')){const ds=view.slice(2);html+=`<div class="sec today">${WDF[fromIso(ds).getDay()]} · ${ddmm(ds)}<span>${list.length}</span></div>`}
+    if(view==='done')html+=`<div class="sec">Выполнено<span>${list.length}</span><div class="spacer"></div><button class="btn danger" type="button" data-act="clear" style="padding:4px 10px;font-size:13px;text-transform:none;letter-spacing:0;font-family:var(--f-ui)">${clearArmed?'Точно удалить все?':'Очистить'}</button></div>`;
+    html+=list.map(rowHtml).join('');
+  }
+  L.innerHTML=html; popId=null;
+  if(editing){const i=$('ed-'+editing); if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
+}
+
+/* ---------- конфетти ---------- */
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function confetti(x,y){
+  if(reduce)return;
+  const cv=$('confetti'), ctx=cv.getContext('2d'), dpr=window.devicePixelRatio||1;
+  cv.width=innerWidth*dpr; cv.height=innerHeight*dpr; ctx.scale(dpr,dpr);
+  const cs=getComputedStyle(document.documentElement);
+  const cols=['--accent','--accent-2','--ok','--p2','--p3'].map(v=>cs.getPropertyValue(v).trim());
+  const P=Array.from({length:28},()=>({x,y,vx:(Math.random()-.5)*7,vy:-Math.random()*7-2,r:Math.random()*4+3,c:cols[Math.floor(Math.random()*cols.length)],a:Math.random()*6,life:0}));
+  let f=0;(function tick(){
+    ctx.clearRect(0,0,innerWidth,innerHeight);
+    P.forEach(p=>{p.vy+=.28;p.x+=p.vx;p.y+=p.vy;p.a+=.2;p.life++;
+      ctx.save();ctx.globalAlpha=Math.max(0,1-p.life/55);ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.fillStyle=p.c;ctx.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);ctx.restore()});
+    if(++f<55)requestAnimationFrame(tick);else ctx.clearRect(0,0,innerWidth,innerHeight);
+  })();
+}
+
+/* ---------- действия ---------- */
+function toast(text,undo){
+  lastUndo=undo; $('toastText').textContent=text; $('toastUndo').hidden=!undo; $('toast').hidden=false;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>{$('toast').hidden=true;lastUndo=null},5000);
+}
+$('toastUndo').addEventListener('click',()=>{const u=lastUndo;$('toast').hidden=true;lastUndo=null;if(u)safe(u)});
+$('addForm').addEventListener('submit',e=>{
+  e.preventDefault(); const v=$('addInput').value.trim(); if(!v||!store)return;
+  const p=parse(v); if(!p.title){showNote('Добавь название задачи, а не только теги и дату.');return}
+  if(view==='done')view='all';
+  const t={id:newId(),...p,done:false,doneAt:null,created:Date.now()};
+  popId=t.id; $('addInput').value=''; updateGhost(); safe(()=>store.add(t)); safe(()=>persistColors(p.tags));
+});
+$('views').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;view=b.dataset.v;editing=null;clearArmed=false;render()});
+$('days').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;view=view===b.dataset.v?'all':b.dataset.v;editing=null;clearArmed=false;render()});
+$('search').addEventListener('input',e=>{setSearch(e.target.value);render()});
+$('tags').addEventListener('click',e=>{const b=e.target.closest('[data-tag]');if(!b)return;tagFilter=tagFilter===b.dataset.tag?null:b.dataset.tag;render()});
+$('list').addEventListener('click',e=>{
+  const a=e.target.closest('[data-act]'); if(!a||!store)return;
+  const row=a.closest('.row'); const id=row&&row.dataset.id; const t=tasks.find(x=>x.id===id);
+  const act=a.dataset.act;
+  if(act==='clear'){
+    if(!clearArmed){clearArmed=true;render();setTimeout(()=>{clearArmed=false;render()},4000);return}
+    clearArmed=false; const done=tasks.filter(x=>x.done);
+    (async()=>{for(const d of done){await safe(()=>store.remove(d.id))}})();
+    toast('Удалено выполненных: '+done.length,null); return;
+  }
+  if(!t)return;
+  if(act==='toggle'){
+    const was=t.done; editing=null;
+    if(!was){const r=a.getBoundingClientRect();confetti(r.left+r.width/2,r.top+r.height/2)}
+    safe(()=>store.update(id,{done:!was,doneAt:was?null:Date.now()}));
+    if(!was)toast('Готово: '+t.title,()=>store.update(id,{done:false,doneAt:null}));
+  }
+  if(act==='edit'){editing=id;render()}
+  if(act==='del'){
+    editing=null; const copy={...t};
+    safe(()=>store.remove(id)); toast('Удалено: '+t.title,()=>store.add(copy));
+  }
+});
+$('list').addEventListener('submit',e=>{
+  const f=e.target.closest('form[data-act="save"]'); if(!f)return; e.preventDefault();
+  const id=f.closest('.row').dataset.id; const v=f.querySelector('input').value.trim();
+  editing=null;
+  if(!v){render();return}
+  const p=parse(v); if(!p.title){render();return}
+  safe(()=>store.update(id,p)); safe(()=>persistColors(p.tags)); render();
+});
+$('list').addEventListener('keydown',e=>{if(e.key==='Escape'&&editing){editing=null;render()}});
+document.addEventListener('keydown',e=>{
+  if(e.key==='/'&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA'){e.preventDefault();$('addInput').focus()}
+  if(e.key==='Escape'&&!$('sheet').hidden)closeSheet();
+});
+
+/* ---------- экспорт для ИИ ---------- */
+const ASK={
+  day:'Составь реалистичный план на сегодня: что сделать первым, что после, что лучше перенести. Учитывай сроки и приоритеты.',
+  prio:'Расставь задачи по важности и срочности (матрица Эйзенхауэра). Скажи, что делать сразу, что запланировать, что можно делегировать или удалить.',
+  steps:'Выбери 3 самые крупные или расплывчатые задачи и разбей каждую на конкретные шаги по 15–30 минут.',
+  week:'Распредели задачи по дням ближайшей недели так, чтобы успеть к срокам и не перегрузить ни один день.',
+};
+function exportText(){
+  const mode=$('exMode').value;
+  const src=($('exScope').checked?visible():tasks.filter(t=>!t.done).sort(cmp)).filter(t=>!t.done);
+  const d=today0();
+  const ask=mode==='own'?($('exOwn').value.trim()||'(напиши свой вопрос)'):ASK[mode];
+  const lines=src.map(t=>{
+    const parts=[];
+    if(t.priority)parts.push('приоритет '+t.priority);
+    if(t.due){const n=diff(t.due);parts.push('срок '+ddmm(t.due)+(n<0?' (просрочено на '+(-n)+' дн.)':n===0?' (сегодня)':' (через '+n+' дн.)'))}
+    if((t.tags||[]).length)parts.push(t.tags.map(g=>'#'+g).join(' '));
+    return '- [ ] '+t.title+(parts.length?' — '+parts.join(' · '):'');
+  });
+  return ['Ты мой помощник по планированию. Сегодня '+WD[d.getDay()]+', '+ddmm(iso(d))+'.'+d.getFullYear()+'.',
+    '','Задача: '+ask,'',
+    'Мои открытые задачи ('+src.length+'), приоритет 1 — самый важный:',
+    ...(lines.length?lines:['(задач нет)']),
+    '','Отвечай кратко, по пунктам, на русском.'].join('\n');
+}
+function refreshExport(){$('exOwn').hidden=$('exMode').value!=='own';$('exText').value=exportText();$('exMsg').textContent=''}
+function openSheet(){$('sheet').hidden=false;refreshExport();$('exCopy').focus()}
+function closeSheet(){$('sheet').hidden=true;$('exportBtn').focus()}
+$('exportBtn').addEventListener('click',openSheet);
+$('exClose').addEventListener('click',closeSheet);
+$('sheet').addEventListener('click',e=>{if(e.target===$('sheet'))closeSheet()});
+$('exMode').addEventListener('change',refreshExport);
+$('exScope').addEventListener('change',refreshExport);
+$('exOwn').addEventListener('input',refreshExport);
+$('exCopy').addEventListener('click',()=>{
+  const text=$('exText').value;
+  const fallback=()=>{const ta=$('exText');ta.focus();ta.select();$('exMsg').textContent='Текст выделен — нажми ⌘C / «Скопировать».'};
+  try{navigator.clipboard.writeText(text).then(()=>{$('exMsg').textContent='Скопировано. Вставь в чат с ИИ.'},fallback)}catch(e){fallback()}
+});
+
+/* ---------- шпаргалка: вставка и теги ---------- */
+function insertToken(tok){
+  const i=$('addInput'); let v=i.value;
+  if(v&&!/\s$/.test(v))v+=' ';
+  i.value=v+tok+(tok.endsWith('@')?'':' '); i.focus(); i.setSelectionRange(i.value.length,i.value.length); acUpdate(i);
+}
+$('sideTags').addEventListener('click',e=>{
+  const rm=e.target.closest('[data-rm]'); if(rm&&saveTags){safe(()=>saveTags(presets.filter(g=>g!==rm.dataset.rm)));return}
+  const b=e.target.closest('[data-ins]'); if(b)insertToken(b.dataset.ins);
+});
+['sidePrio','sideDates'].forEach(id=>$(id).addEventListener('click',e=>{const b=e.target.closest('[data-ins]');if(b)insertToken(b.dataset.ins)}));
+$('tagForm').addEventListener('submit',e=>{
+  e.preventDefault(); if(!saveTags)return;
+  const name=$('tagInput').value.trim().replace(/^#+/,'').toLowerCase().replace(/\s+/g,'-');
+  if(!name)return;
+  if(!/^[\p{L}\p{N}_\-]+$/u.test(name)){showNote('В теге можно использовать только буквы, цифры, «-» и «_».');return}
+  $('tagInput').value='';
+  if(!presets.includes(name))safe(()=>saveTags([...presets,name]));
+});
+
+/* ---------- подсказки при вводе #, ! и @ ---------- */
+const ac={el:$('ac'),input:null,items:[],idx:0,tok:null,title:''};
+function tokenAt(inp){
+  const v=inp.value, c=inp.selectionStart==null?v.length:inp.selectionStart;
+  const m=v.slice(0,c).match(/(^|\s)([#!@])([^\s#!@]*)$/); if(!m)return null;
+  const tail=v.slice(c).match(/^\S*/)[0];
+  return {kind:m[2],q:m[3].toLowerCase(),start:c-m[3].length-1,end:c+tail.length};
+}
+function suggest(kind,q){
+  if(kind==='#'){
+    const a=allTags().filter(t=>t.name.includes(q)).sort((x,y)=>(y.name.startsWith(q)-x.name.startsWith(q)));
+    const items=a.map(t=>({ins:'#'+t.name,label:'#'+t.name,hint:t.count?t.count+' в работе':'пока пусто',sw:`hsl(${hue(t.name)} 70% 60%)`}));
+    if(q&&!a.some(t=>t.name===q)&&/^[\p{L}\p{N}_\-]+$/u.test(q))items.push({ins:'#'+q,label:'#'+q,hint:'новый тег'});
+    return {title:'Теги',items};
+  }
+  if(kind==='!')return {title:'Приоритет',items:PRIO.filter(p=>String(p.v).startsWith(q)).map(p=>({ins:'!'+p.v,label:'!'+p.v,hint:p.name,sw:`var(--p${p.v})`}))};
+  const items=[];
+  if(/^\d/.test(q)||q.startsWith('+')){const h=dateHint(q);if(h)items.push({ins:'@'+q,label:'@'+q,hint:h})}
+  DATE_OPTS.filter(o=>o[0].startsWith(q)&&o[0]!==q).forEach(o=>items.push({ins:'@'+o[0],label:'@'+o[0],hint:(o[1]?o[1]+' · ':'')+dateHint(o[0])}));
+  if(!q)items.push({ins:'@',label:'@дд.мм',hint:'своя дата, например @15.12',keep:true});
+  return {title:'Срок',items};
+}
+function acClose(){ac.el.hidden=true;ac.input=null;ac.items=[]}
+function acUpdate(inp){
+  const t=tokenAt(inp); if(!t){acClose();return}
+  const {title,items}=suggest(t.kind,t.q); if(!items.length){acClose();return}
+  ac.input=inp; ac.tok=t; ac.items=items; ac.idx=0; ac.title=title; acDraw();
+  const r=inp.getBoundingClientRect(); const w=Math.min(Math.max(260,r.width*.55),innerWidth-24);
+  ac.el.style.width=w+'px';
+  ac.el.style.left=Math.max(12,Math.min(r.left,innerWidth-w-12))+'px';
+  ac.el.style.top=(r.bottom+6)+'px';
+  ac.el.style.maxHeight=Math.max(140,innerHeight-r.bottom-20)+'px';
+  ac.el.hidden=false;
+}
+function acDraw(){
+  ac.el.innerHTML=`<div class="ttlx">${ac.title}</div>`+ac.items.map((it,i)=>`<button type="button" role="option" data-i="${i}" aria-selected="${i===ac.idx}">${it.sw?`<span class="sw" style="background:${it.sw}"></span>`:''}<code>${esc(it.label)}</code><span class="h">${esc(it.hint||'')}</span></button>`).join('');
+}
+function acPick(i){
+  const it=ac.items[i], inp=ac.input, t=ac.tok; if(!it||!inp)return;
+  const v=inp.value; const rest=v.slice(t.end).replace(/^\s+/,'');
+  const add=it.keep?it.ins:it.ins+' ';
+  inp.value=v.slice(0,t.start)+add+rest;
+  const pos=t.start+add.length; inp.focus(); inp.setSelectionRange(pos,pos);
+  if(it.keep)acClose(); else acUpdate(inp);
+  if(inp.id==='search'){setSearch(inp.value);render()}
+  if(inp.id==='addInput')updateGhost();
+}
+const isTaskInput=el=>!!el&&(el.id==='addInput'||el.id==='search'||(el.tagName==='INPUT'&&!!el.closest('.edit')));
+document.addEventListener('input',e=>{if(isTaskInput(e.target))acUpdate(e.target);if(e.target.id==='addInput')updateGhost()});
+document.addEventListener('click',e=>{if(isTaskInput(e.target))acUpdate(e.target);else if(!e.target.closest('#ac')&&!e.target.closest('.side'))acClose()});
+document.addEventListener('keydown',e=>{
+  if(ac.el.hidden||e.target!==ac.input)return;
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();ac.idx=(ac.idx+(e.key==='ArrowDown'?1:-1)+ac.items.length)%ac.items.length;acDraw();const b=ac.el.querySelector('[aria-selected="true"]');if(b)b.scrollIntoView({block:'nearest'})}
+  else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();e.stopPropagation();acPick(ac.idx)}
+  else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();acClose()}
+  else if(e.key==='ArrowLeft'||e.key==='ArrowRight'){setTimeout(()=>acUpdate(e.target),0)}
+},true);
+ac.el.addEventListener('mousedown',e=>e.preventDefault());
+ac.el.addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(b)acPick(Number(b.dataset.i))});
+window.addEventListener('resize',acClose);
+window.addEventListener('scroll',()=>{if(ac.input)acUpdate(ac.input)},{passive:true});
+document.addEventListener('focusout',e=>{if(e.target===ac.input)setTimeout(()=>{if(document.activeElement!==ac.input)acClose()},150)});
+
+/* ---------- расписание ---------- */
+const PAIR_N={'08:30':1,'10:15':2,'12:00':3,'14:10':4,'15:55':5,'17:40':6,'19:25':7};
+const mondayOf=d=>{const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x};
+function weekNo(date){const a=fromIso((sched&&sched.weekAnchor)||'2026-08-31');return Math.round((mondayOf(date)-mondayOf(a))/(7*864e5))}
+const parity=date=>((weekNo(date)%2)+2)%2===0?1:2;
+const toMin=t=>{const [h,m]=t.split(':').map(Number);return h*60+m};
+const kindCls=k=>k==='лекция'?'k-lec':k==='лаба'?'k-lab':k==='практика'?'k-pr':'';
+function pairsFor(date){
+  if(!sched||!Array.isArray(sched.slots))return[];
+  const dow=date.getDay(), w=parity(date);
+  return sched.slots.filter(x=>x.day===dow&&x.week===w&&x.sub===ttPrefs.sub&&!(ttPrefs.hideMil&&x.military)).sort((a,b)=>toMin(a.start)-toMin(b.start));
+}
+function saveTT(){try{localStorage.setItem('plotno.tt.v1',JSON.stringify(ttPrefs))}catch(e){}}
+function renderTabs(){
+  document.body.classList.toggle('tab-tt',tab==='timetable');
+  document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tab===tab));
+}
+function pairStatus(date,x,isToday){
+  if(!isToday)return'';
+  const now=new Date(), m=now.getHours()*60+now.getMinutes();
+  if(m>=toMin(x.start)&&m<toMin(x.end))return'now';
+  return'';
+}
+function renderTT(){
+  if(tab!=='timetable')return;
+  const T=$('tt');
+  if(!sched){T.innerHTML='<div class="day"><div class="empty"><div class="big">⌛</div><b>Расписание загружается</b><span>Если ничего не появляется, попроси Claude загрузить расписание заново.</span></div></div>';return}
+  const base=mondayOf(new Date()); base.setDate(base.getDate()+7*ttShift);
+  const w=parity(base), today=iso(today0());
+  const now=new Date(), nowM=now.getHours()*60+now.getMinutes();
+  let nextKey=null;
+  if(ttShift===0){const tp=pairsFor(today0());const nx=tp.find(x=>toMin(x.start)>nowM);if(nx)nextKey=nx.start}
+  let html=`<div class="ttbar">
+    <div class="seg" id="ttWeek"><button type="button" data-s="0" aria-pressed="${ttShift===0}">Эта неделя</button><button type="button" data-s="1" aria-pressed="${ttShift===1}">Следующая</button></div>
+    <span class="wk">${weekNo(base)+1}-я неделя · <b>${w===1?'нечётная':'чётная'}</b></span>
+    <div class="seg" id="ttSub"><button type="button" data-sub="1" aria-pressed="${ttPrefs.sub===1}">1 подгруппа</button><button type="button" data-sub="2" aria-pressed="${ttPrefs.sub===2}">2 подгруппа</button></div>
+    <label><input type="checkbox" id="ttMil" ${ttPrefs.hideMil?'checked':''}> скрыть военную подготовку</label>
+    <div class="spacer"></div>
+    <button type="button" class="btn" id="ttFlip" title="Если в институте сейчас другая неделя">Чётность не та?</button>
+  </div><div class="ttgrid">`;
+  for(let i=0;i<6;i++){
+    const d=new Date(base); d.setDate(base.getDate()+i); const ds=iso(d), isToday=ds===today;
+    const ps=pairsFor(d);
+    html+=`<div class="day${isToday?' is-today':''}"><h3>${WDF[d.getDay()]} <small>${ddmm(ds)}</small>${isToday?'<em>сегодня</em>':''}</h3>`;
+    if(!ps.length)html+='<div class="none">Пар нет</div>';
+    ps.forEach(x=>{
+      const st=pairStatus(d,x,isToday);
+      const isNext=isToday&&!st&&x.start===nextKey;
+      const left=isNext?toMin(x.start)-nowM:0;
+      html+=`<div class="pair${x.military?' mil':''}${st==='now'?' now':''}">
+        <div class="tm"><span class="n">${PAIR_N[x.start]||''} пара</span><br>${x.start}<small>${x.end}</small></div>
+        <div><div class="sj">${esc(x.subject)}</div>
+        <div class="meta">${x.type?`<span class="kind ${kindCls(x.type)}">${esc(x.type)}</span>`:''}${x.teacher?`<span>${esc(x.teacher)}</span>`:''}${x.place?`<span>${esc(x.place)}</span>`:''}${x.link?`<a href="${esc(x.link)}" target="_blank" rel="noopener">открыть курс</a>`:''}${x.mode==='асинхронно'?'<span>асинхронно</span>':''}</div>
+        ${st==='now'?'<div class="st">идёт сейчас</div>':isNext?`<div class="st next">через ${left>=60?Math.floor(left/60)+' ч '+(left%60)+' мин':left+' мин'}</div>`:''}</div></div>`;
+    });
+    html+='</div>';
+  }
+  html+=`</div><div class="ttfoot">${esc(sched.group||'')} · ${esc(sched.title||'')} · источник: ${esc(sched.source||'')}. Расписание встроено в сайт.</div>`;
+  T.innerHTML=html;
+}
+function renderSideToday(){
+  const box=$('sideToday'); if(!box)return;
+  const ps=pairsFor(today0());
+  if(!sched||!ps.length){box.hidden=true;return}
+  const m=new Date().getHours()*60+new Date().getMinutes();
+  const left=ps.filter(x=>toMin(x.end)>m);
+  box.hidden=false;
+  $('sideTodayList').innerHTML=(left.length?left.map(x=>{const now=m>=toMin(x.start);return`<div><code${now?' class="now"':''}>${x.start}</code><span${now?' class="now"':''}>${esc(x.subject)}${x.type?' · '+esc(x.type):''}</span></div>`}).join(''):'<div><code>—</code><span>Пары на сегодня закончились</span></div>')
+    +'<button type="button" id="goTT">Всё расписание →</button>';
+}
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;tab=b.dataset.tab;location.hash=tab==='timetable'?'timetable':'tasks';acClose();render()});
+window.addEventListener('hashchange',()=>{const t=location.hash==='#timetable'?'timetable':'tasks';if(t!==tab){tab=t;render()}});
+document.addEventListener('click',e=>{if(e.target.id==='goTT'){tab='timetable';location.hash='timetable';render();window.scrollTo(0,0)}});
+$('tt').addEventListener('click',e=>{
+  const w=e.target.closest('#ttWeek [data-s]'); if(w){ttShift=Number(w.dataset.s);render();return}
+  const sb=e.target.closest('#ttSub [data-sub]'); if(sb){ttPrefs.sub=Number(sb.dataset.sub);saveTT();render();return}
+  if(e.target.id==='ttFlip'&&sched){
+    const old=sched.weekAnchor||'2026-08-31'; const a=fromIso(old); a.setDate(a.getDate()+7); const nv=iso(a);
+    sched={...sched,weekAnchor:nv}; render();
+    if(saveAnchor)safe(()=>saveAnchor(nv));
+    toast('Чётность недели переключена',()=>{sched={...sched,weekAnchor:old};render();return saveAnchor?saveAnchor(old):null});
+  }
+});
+$('tt').addEventListener('change',e=>{if(e.target.id==='ttMil'){ttPrefs.hideMil=e.target.checked;saveTT();render()}});
+setInterval(()=>{if(!editing&&document.activeElement.tagName!=='INPUT')render()},60000);
+
+/* ---------- поиск ---------- */
+function setSearch(v){search=v.trim();sq=search?parse(search):null}
+function matchSearch(t){
+  const title=(t.title||'').toLowerCase(), tg=t.tags||[];
+  const words=sq.title.toLowerCase().split(' ').filter(w=>w&&!/^[#!@]/.test(w));
+  if(!words.every(w=>title.includes(w)||tg.some(g=>g.includes(w))))return false;
+  if(sq.tags.length&&!sq.tags.every(q=>tg.some(g=>g.startsWith(q))))return false;
+  if(sq.priority&&t.priority!==sq.priority)return false;
+  if(sq.due&&t.due!==sq.due)return false;
+  return true;
+}
+
+/* ---------- дописывание по прошлым задачам ----------
+   Берёт до 300 последних задач (вместе с выполненными) и, пока ты пишешь,
+   предлагает окончание серым текстом. Tab, → или кнопка «дополнить» принимают его. */
+let ghostText='';
+function history(){
+  const seen=new Set(), out=[];
+  tasks.slice().sort((a,b)=>(b.created||0)-(a.created||0)).forEach(t=>{
+    const line=[t.title,...(t.tags||[]).map(g=>'#'+g),t.priority?'!'+t.priority:''].filter(Boolean).join(' ');
+    const k=line.toLowerCase(); if(line&&!seen.has(k)){seen.add(k);out.push(line)}
+  });
+  return out.slice(0,300);
+}
+function ghostFor(typed){
+  const low=typed.toLowerCase(); if(low.trim().length<3)return'';
+  const H=history();
+  for(const o of H){if(o.length>typed.length&&o.toLowerCase().startsWith(low))return o.slice(typed.length)}
+  const W=typed.trim().split(/\s+/); if(W.length<2)return'';
+  for(const o of H){
+    const O=o.split(/\s+/); if(O.length<=W.length)continue;
+    let diffs=0, ok=true;
+    for(let i=0;i<W.length;i++){
+      if(O[i].toLowerCase()===W[i].toLowerCase())continue;
+      diffs++;
+      const last=i===W.length-1;
+      if(last&&!typed.endsWith(' ')&&W[i].length<O[i].length){ok=false;break}
+      if(!last&&!/\d/.test(W[i])){ok=false;break}
+    }
+    if(ok&&diffs===1)return(typed.endsWith(' ')?'':' ')+O.slice(W.length).join(' ');
+  }
+  return'';
+}
+function updateGhost(){
+  const i=$('addInput'), g=$('ghost'), v=i.value;
+  ghostText='';
+  if(ac.el.hidden&&document.activeElement===i&&i.selectionStart===v.length&&v)ghostText=ghostFor(v);
+  if(ghostText&&i.scrollWidth<=i.clientWidth+1){g.innerHTML=`<span class="typed">${esc(v)}</span>${esc(ghostText)}`;$('gbtn').hidden=false}
+  else{g.textContent='';$('gbtn').hidden=true;ghostText=''}
+}
+function acceptGhost(){
+  const i=$('addInput'); if(!ghostText)return;
+  i.value+=ghostText; ghostText=''; i.focus(); i.setSelectionRange(i.value.length,i.value.length); updateGhost();
+}
+$('addInput').addEventListener('keydown',e=>{
+  if(!ghostText||!ac.el.hidden)return;
+  const atEnd=e.target.selectionStart===e.target.value.length;
+  if(e.key==='Tab'||(e.key==='ArrowRight'&&atEnd)){e.preventDefault();acceptGhost()}
+  else if(e.key==='Escape'){ghostText='';$('ghost').textContent='';$('gbtn').hidden=true}
+});
+$('addInput').addEventListener('click',()=>setTimeout(updateGhost,0));
+$('addInput').addEventListener('blur',()=>setTimeout(()=>{if(document.activeElement!==$('addInput')){$('ghost').textContent='';$('gbtn').hidden=true;ghostText=''}},150));
+$('gbtn').addEventListener('mousedown',e=>e.preventDefault());
+$('gbtn').addEventListener('click',acceptGhost);
+
+/* ---------- резервная копия ---------- */
+$('bkSave').addEventListener('click',()=>{
+  const data={app:'plotno',v:1,saved:new Date().toISOString(),tasks,settings:{tags:presets,colors}};
+  const blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='plotno-'+iso(new Date())+'.json';
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
+  toast('Копия сохранена',null);
+});
+$('bkFile').addEventListener('change',async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f||!store)return;
+  try{
+    const d=JSON.parse(await f.text()); if(!d||!Array.isArray(d.tasks))throw new Error('bad');
+    const have=new Set(tasks.map(t=>t.id)); let n=0;
+    for(const t of d.tasks){if(t&&t.id&&t.title&&!have.has(t.id)){await store.add(t);n++}}
+    if(d.settings){presets=Array.from(new Set([...presets,...(d.settings.tags||[])]));colors={...(d.settings.colors||{}),...colors};await saveSettings()}
+    toast(n?'Добавлено задач из копии: '+n:'Новых задач в копии нет',null); render();
+  }catch(err){showNote('Не получилось прочитать файл. Выбери файл, сохранённый кнопкой «Сохранить в файл».')}
+});
+
+init();
+})();
+</script>
+
+</body>
+</html>
